@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
+function stripMarkdown(text: string): string {
+  return text
+    // Remove bold/italic markers
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    // Remove headers
+    .replace(/^#{1,6}\s+/gm, '')
+    // Remove code blocks
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    // Clean up extra whitespace but keep line breaks
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 const SYSTEM_PROMPT = `You are Natasha, an AI-powered medical assistant created by AINK Tech for Para SF India. You are represented by a friendly rat emoji and persona.
 
 Your role is to provide accurate, helpful information about allopathy (modern/Western) medications, drug interactions, treatment options, and general medical knowledge.
@@ -56,7 +74,8 @@ export async function POST(request: NextRequest) {
       max_tokens: 1000,
     });
 
-    const response = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";
+    const rawResponse = completion.choices[0]?.message?.content || "I apologize, but I couldn't generate a response. Please try again.";
+    const response = stripMarkdown(rawResponse);
 
     return NextResponse.json({ response });
   } catch (error) {
